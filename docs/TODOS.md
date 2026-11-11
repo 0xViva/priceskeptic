@@ -14,7 +14,7 @@
 - [x] Markdown table in the top-level Obsidian note `prisjeger.md`, with a managed block.
 - [x] Two-pass search. The follow-up asks whether there are better sales and reuses the first OpenCode session.
 - [x] Immediate run on startup, then scheduled runs at 10:00 and 22:00 local time.
-- [x] `start.sh` and `stop.sh` service scripts with a PID file and log.
+- [x] `scripts/start.sh` and `scripts/stop.sh` service scripts with a PID file and log.
 - [x] Trustpilot store score and review count in the CSV and Obsidian table, cached for seven days.
 - [x] Store trust as a ranking tie-breaker, plus `-min-trust` as an optional hard filter.
 - [x] Server-side deal gate: an offer without a real before-price or verified low is dropped.

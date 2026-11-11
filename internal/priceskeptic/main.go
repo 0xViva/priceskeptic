@@ -1,4 +1,4 @@
-package main
+package prisjeger
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func main() {
+func Main() {
 	cfg := config{
 		addr:          envOr("PRISJEGER_ADDR", "127.0.0.1:8080"),
 		list:          envOr("PRISJEGER_LIST", "handleliste.txt"),

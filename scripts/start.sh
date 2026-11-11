@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 RUN_DIR=".run"
 BIN="$RUN_DIR/prisjeger"
@@ -26,7 +26,7 @@ if [ -f "$PID_FILE" ]; then
   rm -f "$PID_FILE"
 fi
 
-go build -o "$BIN" .
+go build -o "$BIN" ./cmd/prisjeger
 
 nohup "$BIN" "$@" >> "$LOG_FILE" 2>&1 &
 pid=$!

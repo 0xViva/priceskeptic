@@ -3,7 +3,7 @@
 **Your shopping list, hunted while you sleep.**
 
 [![Go 1.27.3](https://img.shields.io/badge/Go-1.27.3-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![test](https://img.shields.io/badge/test-go%20test-00ADD8)](STATE-MACHINES.md#verification)
+[![test](https://img.shields.io/badge/test-go%20test-00ADD8)](docs/STATE-MACHINES.md#verification)
 [![platform](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)](#quick-start)
 [![license](https://img.shields.io/badge/license-not%20declared-lightgrey)](#license-and-contact)
 
@@ -31,10 +31,21 @@ prisjeger is a local Go service that turns `handleliste.txt` into a ranked list 
 ![Obsidian](https://img.shields.io/badge/Obsidian-note-7C3AED?logo=obsidian&logoColor=white)
 ![CSV](https://img.shields.io/badge/CSV-results-217346)
 
+## Layout
+
+| Path | What lives there |
+| --- | --- |
+| `cmd/prisjeger/` | The entrypoint. `main` calls `prisjeger.Main()`. |
+| `internal/prisjeger/` | The service code: HTTP server, run tracker, search, offers, store, note, trust, notifications, and the web log. |
+| `docs/` | [State machines](docs/STATE-MACHINES.md) and [todos](docs/TODOS.md). |
+| `scripts/` | `start.sh` and `stop.sh`. |
+| `tools/` | Node and Playwright helpers for the search, including the Amazon delivery check. |
+| `.opencode/` | The `shopping-expert` skill. |
+
 ## Quick start
 
 ```sh
-./start.sh                                      # build and run detached
+./scripts/start.sh                             # build and run detached
 curl -X POST http://127.0.0.1:8080/search       # start a run
 curl -s http://127.0.0.1:8080/status            # idle / running, counts, next run
 ```
@@ -47,33 +58,33 @@ The service has 14 named state machines: the run lifecycle, item search, offer g
 
 | Machine | States | Where |
 | --- | --- | --- |
-| Search run | `idle` → `running` → `idle` | [details](STATE-MACHINES.md#1-search-run) |
-| Notification | `disabled`, `ready`, `cooling`, `failed` | [details](STATE-MACHINES.md#10-notification) |
-| Obsidian block | `absent`, `closed`, `open` | [details](STATE-MACHINES.md#12-obsidian-block) |
+| Search run | `idle` → `running` → `idle` | [details](docs/STATE-MACHINES.md#1-search-run) |
+| Notification | `disabled`, `ready`, `cooling`, `failed` | [details](docs/STATE-MACHINES.md#10-notification) |
+| Obsidian block | `absent`, `closed`, `open` | [details](docs/STATE-MACHINES.md#12-obsidian-block) |
 
-The full inventory, transitions, invariants, and the deliberately deferred machines are in [STATE-MACHINES.md](STATE-MACHINES.md).
+The full inventory, transitions, invariants, and the deliberately deferred machines are in [docs/STATE-MACHINES.md](docs/STATE-MACHINES.md).
 
 ---
 
 ## Start and stop
 
 ```sh
-./start.sh
-./stop.sh
+./scripts/start.sh
+./scripts/stop.sh
 ```
 
-`start.sh` builds `.run/prisjeger`, starts it detached, writes `.run/prisjeger.pid`, and appends to `.run/prisjeger.log`. It passes flags through to the server, so this works too.
+`scripts/start.sh` builds `.run/prisjeger`, starts it detached, writes `.run/prisjeger.pid`, and appends to `.run/prisjeger.log`. It passes flags through to the server, so this works too.
 
 ```sh
-./start.sh -addr 127.0.0.1:8080 -list handleliste.txt
+./scripts/start.sh -addr 127.0.0.1:8080 -list handleliste.txt
 ```
 
-`stop.sh` sends SIGTERM, waits up to 10 seconds, then escalates only if needed. `.run/` is gitignored.
+`scripts/stop.sh` sends SIGTERM, waits up to 10 seconds, then escalates only if needed. `.run/` is gitignored.
 
 ## Start manually
 
 ```sh
-go run .
+go run ./cmd/prisjeger
 curl -X POST http://127.0.0.1:8080/search
 curl http://127.0.0.1:8080/status
 curl http://127.0.0.1:8080/results
@@ -128,7 +139,7 @@ export PRISJEGER_TELEGRAM_CHAT="123456789"
 
 Pass `-telegram-token` and `-telegram-chat` instead when you start the binary with flags. Restart the service so it reads the values. The log shows `telegram: notifications enabled` when both are set. With either value empty, the notifier stays off and everything else works as before.
 
-`start.sh` also loads `.run/telegram.env` when that file exists. Put the two exports there to keep the values across restarts without repeating them in every shell.
+`scripts/start.sh` also loads `.run/telegram.env` when that file exists. Put the two exports there to keep the values across restarts without repeating them in every shell.
 
 Test the setup against the running service:
 
@@ -305,7 +316,7 @@ Flags, with environment fallbacks.
 
 Prices are normalized to NOK. Run one server instance at a time.
 
-The old `results/*.csv` files from the first version are legacy. They are not imported. `TODOS.md` tracks the remaining work.
+The old `results/*.csv` files from the first version are legacy. They are not imported. `docs/TODOS.md` tracks the remaining work.
 
 ## License and contact
 

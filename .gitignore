@@ -1,6 +1,7 @@
 /results/
 /results.csv
 /prisjeger
+/cmd/prisjeger/prisjeger
 /.run/
 /websearch.log
 /tools/node_modules/

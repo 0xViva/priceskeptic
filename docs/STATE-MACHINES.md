@@ -2,6 +2,8 @@
 
 Every long-lived thing here changes state: a run, an item, an offer, a row, a cache entry, a managed note block, a process. This file names each one, its legal states and transitions, and the decision that keeps it honest.
 
+The Go source files live under `internal/prisjeger/`.
+
 The rule is simple. If two fields must agree, they are one machine. If a transition can be skipped by a race, it is guarded in one place. If a state is written to disk, its legal values live in one table.
 
 ## Inventory
@@ -21,7 +23,7 @@ The rule is simple. If two fields must agree, they are one machine. If a transit
 | 11 | Scheduler | `disabled`, `waiting`, `fired`, `skipped` | `server.go` | `next_run_at` exposed |
 | 12 | Obsidian block | `absent`, `closed`, `open` | `note.go` | Explicit span parser |
 | 13 | CSV schema | `missing`, `legacy`, `current`, `corrupt` | `store.go` | Optional-column migration |
-| 14 | Service process | `stopped`, `running`, `stale` | `start.sh`, `stop.sh` | PID file with identity check |
+| 14 | Service process | `stopped`, `running`, `stale` | `scripts/start.sh`, `scripts/stop.sh` | PID file with identity check |
 
 ## 1. Search run
 
@@ -169,7 +171,7 @@ absent ──append──► closed (start + end) ──rewrite span──► cl
 
 ## 14. Service process
 
-`start.sh` and `stop.sh` model the PID file as three states: absent (stopped), live and matching the binary (running), or stale/foreign (remove and report). A stale PID is never signaled. This is the shell-level counterpart to the Go run machine.
+`scripts/start.sh` and `scripts/stop.sh` model the PID file as three states: absent (stopped), live and matching the binary (running), or stale/foreign (remove and report). A stale PID is never signaled. This is the shell-level counterpart to the Go run machine.
 
 ## Smaller machines worth naming
 
