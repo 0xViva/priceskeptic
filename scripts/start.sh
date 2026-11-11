@@ -4,9 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 RUN_DIR=".run"
-BIN="$RUN_DIR/prisjeger"
-PID_FILE="$RUN_DIR/prisjeger.pid"
-LOG_FILE="$RUN_DIR/prisjeger.log"
+BIN="$RUN_DIR/priceskeptic"
+PID_FILE="$RUN_DIR/priceskeptic.pid"
+LOG_FILE="$RUN_DIR/priceskeptic.log"
 
 mkdir -p "$RUN_DIR"
 
@@ -19,14 +19,14 @@ fi
 if [ -f "$PID_FILE" ]; then
   pid="$(cat "$PID_FILE" 2>/dev/null || true)"
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && ps -p "$pid" -o args= | grep -Fq "$BIN"; then
-    echo "prisjeger is already running (pid $pid)"
+    echo "priceskeptic is already running (pid $pid)"
     echo "log: $LOG_FILE"
     exit 0
   fi
   rm -f "$PID_FILE"
 fi
 
-go build -o "$BIN" ./cmd/prisjeger
+go build -o "$BIN" ./cmd/priceskeptic
 
 nohup "$BIN" "$@" >> "$LOG_FILE" 2>&1 &
 pid=$!
@@ -34,13 +34,13 @@ echo "$pid" > "$PID_FILE"
 
 sleep 1
 if ! kill -0 "$pid" 2>/dev/null; then
-  echo "prisjeger failed to start; last log lines:" >&2
+  echo "priceskeptic failed to start; last log lines:" >&2
   tail -n 20 "$LOG_FILE" >&2 || true
   rm -f "$PID_FILE"
   exit 1
 fi
 
-addr="${PRISJEGER_ADDR:-127.0.0.1:8080}"
+addr="${PRICESKEPTIC_ADDR:-127.0.0.1:8080}"
 prev=""
 for arg in "$@"; do
   case "$prev" in
@@ -56,7 +56,7 @@ case "$addr" in
   0.0.0.0:*) addr="127.0.0.1:${addr#0.0.0.0:}" ;;
 esac
 
-echo "prisjeger started (pid $pid)"
+echo "priceskeptic started (pid $pid)"
 echo "log: $LOG_FILE"
 echo "status: curl -s http://$addr/status"
 echo "results: curl -s http://$addr/results"

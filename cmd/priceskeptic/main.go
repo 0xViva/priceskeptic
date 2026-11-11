@@ -1,7 +1,7 @@
 package main
 
-import "github.com/0xViva/prisjeger/internal/prisjeger"
+import "github.com/0xViva/priceskeptic/internal/priceskeptic"
 
 func main() {
-	prisjeger.Main()
+	priceskeptic.Main()
 }

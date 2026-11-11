@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"context"
@@ -18,26 +18,26 @@ import (
 
 func Main() {
 	cfg := config{
-		addr:          envOr("PRISJEGER_ADDR", "127.0.0.1:8080"),
-		list:          envOr("PRISJEGER_LIST", "handleliste.txt"),
-		csvPath:       envOr("PRISJEGER_CSV", "results.csv"),
-		obsidian:      envOr("PRISJEGER_OBSIDIAN", "/home/ajg/obsidian/August/prisjeger.md"),
-		skill:         envOr("PRISJEGER_SKILL", ".opencode/skills/shopping-expert/SKILL.md"),
-		opencode:      envOr("PRISJEGER_OPENCODE", "opencode"),
-		model:         envOr("PRISJEGER_MODEL", ""),
-		schedule:      envOr("PRISJEGER_SCHEDULE", "10:00,22:00"),
-		telegramToken: envOr("PRISJEGER_TELEGRAM_TOKEN", ""),
-		telegramChat:  envOr("PRISJEGER_TELEGRAM_CHAT", ""),
+		addr:          envOr("PRICESKEPTIC_ADDR", "127.0.0.1:8080"),
+		list:          envOr("PRICESKEPTIC_LIST", "handleliste.txt"),
+		csvPath:       envOr("PRICESKEPTIC_CSV", "results.csv"),
+		obsidian:      envOr("PRICESKEPTIC_OBSIDIAN", "/home/ajg/obsidian/August/priceskeptic.md"),
+		skill:         envOr("PRICESKEPTIC_SKILL", ".opencode/skills/shopping-expert/SKILL.md"),
+		opencode:      envOr("PRICESKEPTIC_OPENCODE", "opencode"),
+		model:         envOr("PRICESKEPTIC_MODEL", ""),
+		schedule:      envOr("PRICESKEPTIC_SCHEDULE", "10:00,22:00"),
+		telegramToken: envOr("PRICESKEPTIC_TELEGRAM_TOKEN", ""),
+		telegramChat:  envOr("PRICESKEPTIC_TELEGRAM_CHAT", ""),
 	}
-	timeoutFlag := envOr("PRISJEGER_TIMEOUT", "20m")
-	parallelFlag := envOr("PRISJEGER_PARALLEL", "3")
-	trustCache := envOr("PRISJEGER_TRUST_CACHE", ".run/trustpilot.json")
-	minTrustFlag := envOr("PRISJEGER_MIN_TRUST", "0")
-	webLogPath := envOr("PRISJEGER_WEB_LOG", "websearch.log")
-	postalCode := envOr("PRISJEGER_POSTAL_CODE", "6773")
-	requireDealDefault, err := strconv.ParseBool(envOr("PRISJEGER_REQUIRE_DEAL", "true"))
+	timeoutFlag := envOr("PRICESKEPTIC_TIMEOUT", "20m")
+	parallelFlag := envOr("PRICESKEPTIC_PARALLEL", "3")
+	trustCache := envOr("PRICESKEPTIC_TRUST_CACHE", ".run/trustpilot.json")
+	minTrustFlag := envOr("PRICESKEPTIC_MIN_TRUST", "0")
+	webLogPath := envOr("PRICESKEPTIC_WEB_LOG", "websearch.log")
+	postalCode := envOr("PRICESKEPTIC_POSTAL_CODE", "6773")
+	requireDealDefault, err := strconv.ParseBool(envOr("PRICESKEPTIC_REQUIRE_DEAL", "true"))
 	if err != nil {
-		log.Fatalf("invalid PRISJEGER_REQUIRE_DEAL: %v", err)
+		log.Fatalf("invalid PRICESKEPTIC_REQUIRE_DEAL: %v", err)
 	}
 	requireDeal := flag.Bool("require-deal", requireDealDefault, "drop offers without a verified sale or low price")
 	backfillTrust := flag.Bool("backfill-trust", false, "refresh Trustpilot store ratings for existing rows, then exit")
@@ -168,12 +168,12 @@ func Main() {
 		go s.runScheduler()
 	}
 
-	log.Printf("prisjeger: listening on %s, list %s, csv %s, obsidian %s, schedule %q", cfg.addr, cfg.list, cfg.csvPath, cfg.obsidian, cfg.schedule)
+	log.Printf("priceskeptic: listening on %s, list %s, csv %s, obsidian %s, schedule %q", cfg.addr, cfg.list, cfg.csvPath, cfg.obsidian, cfg.schedule)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		store.Close()
 		log.Fatal(err)
 	}
-	log.Print("prisjeger: stopped")
+	log.Print("priceskeptic: stopped")
 	store.Close()
 }
 

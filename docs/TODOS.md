@@ -11,7 +11,7 @@
 - [x] Max 5 offers per shopping-list item per run.
 - [x] Prisjakt filter. Keep only an offer at the historical low or below the recent trend.
 - [x] `shopping-expert` skill with Norwegian and international stores that ship to Norway.
-- [x] Markdown table in the top-level Obsidian note `prisjeger.md`, with a managed block.
+- [x] Markdown table in the top-level Obsidian note `priceskeptic.md`, with a managed block.
 - [x] Two-pass search. The follow-up asks whether there are better sales and reuses the first OpenCode session.
 - [x] Immediate run on startup, then scheduled runs at 10:00 and 22:00 local time.
 - [x] `scripts/start.sh` and `scripts/stop.sh` service scripts with a PID file and log.

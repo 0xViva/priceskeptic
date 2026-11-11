@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"errors"
@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	noteStartMarker = "<!-- prisjeger:start -->"
-	noteEndMarker   = "<!-- prisjeger:end -->"
+	noteStartMarker = "<!-- priceskeptic:start -->"
+	noteEndMarker   = "<!-- priceskeptic:end -->"
 )
 
 func findNoteBlock(content string) (start, end int, ok bool) {
@@ -151,7 +151,7 @@ func writeFileAtomic(path string, data []byte) error {
 	if info, err := os.Stat(path); err == nil {
 		mode = info.Mode().Perm()
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".prisjeger-*")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".priceskeptic-*")
 	if err != nil {
 		return err
 	}

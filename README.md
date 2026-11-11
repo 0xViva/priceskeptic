@@ -1,4 +1,4 @@
-# prisjeger
+# priceskeptic
 
 **Your shopping list, hunted while you sleep.**
 
@@ -9,7 +9,7 @@
 
 ## At a glance
 
-prisjeger is a local Go service that turns `handleliste.txt` into a ranked list of verified offers. It runs the `shopping-expert` agent twice per item, checks the landed cost to Norway, drops fake discounts, and writes `results.csv` plus an Obsidian table.
+priceskeptic is a local Go service that turns `handleliste.txt` into a ranked list of verified offers. It runs the `shopping-expert` agent twice per item, checks the landed cost to Norway, drops fake discounts, and writes `results.csv` plus an Obsidian table.
 
 > **Core value.** Every kept row is a verified landed cost, not a search snippet. The cheapest buyable offer is always shown, even when it is not on sale.
 
@@ -35,8 +35,8 @@ prisjeger is a local Go service that turns `handleliste.txt` into a ranked list 
 
 | Path | What lives there |
 | --- | --- |
-| `cmd/prisjeger/` | The entrypoint. `main` calls `prisjeger.Main()`. |
-| `internal/prisjeger/` | The service code: HTTP server, run tracker, search, offers, store, note, trust, notifications, and the web log. |
+| `cmd/priceskeptic/` | The entrypoint. `main` calls `priceskeptic.Main()`. |
+| `internal/priceskeptic/` | The service code: HTTP server, run tracker, search, offers, store, note, trust, notifications, and the web log. |
 | `docs/` | [State machines](docs/STATE-MACHINES.md) and [todos](docs/TODOS.md). |
 | `scripts/` | `start.sh` and `stop.sh`. |
 | `tools/` | Node and Playwright helpers for the search, including the Amazon delivery check. |
@@ -73,7 +73,7 @@ The full inventory, transitions, invariants, and the deliberately deferred machi
 ./scripts/stop.sh
 ```
 
-`scripts/start.sh` builds `.run/prisjeger`, starts it detached, writes `.run/prisjeger.pid`, and appends to `.run/prisjeger.log`. It passes flags through to the server, so this works too.
+`scripts/start.sh` builds `.run/priceskeptic`, starts it detached, writes `.run/priceskeptic.pid`, and appends to `.run/priceskeptic.log`. It passes flags through to the server, so this works too.
 
 ```sh
 ./scripts/start.sh -addr 127.0.0.1:8080 -list handleliste.txt
@@ -84,7 +84,7 @@ The full inventory, transitions, invariants, and the deliberately deferred machi
 ## Start manually
 
 ```sh
-go run ./cmd/prisjeger
+go run ./cmd/priceskeptic
 curl -X POST http://127.0.0.1:8080/search
 curl http://127.0.0.1:8080/status
 curl http://127.0.0.1:8080/results
@@ -92,7 +92,7 @@ curl http://127.0.0.1:8080/results
 
 ## Schedule
 
-The service runs the full list once immediately after startup, then at 10:00 and 22:00 local time. At most one run is active at a time. A startup, scheduled, or manual start during a run is a no-op and returns the active run. Change the times with `-schedule` or `PRISJEGER_SCHEDULE`, for example `-schedule "09:30,21:30"`. An empty schedule disables timed runs but keeps the startup run.
+The service runs the full list once immediately after startup, then at 10:00 and 22:00 local time. At most one run is active at a time. A startup, scheduled, or manual start during a run is a no-op and returns the active run. Change the times with `-schedule` or `PRICESKEPTIC_SCHEDULE`, for example `-schedule "09:30,21:30"`. An empty schedule disables timed runs but keeps the startup run.
 
 ## Search passes
 
@@ -125,7 +125,7 @@ It prints JSON with `price_nok`, `shipping_nok`, `total_nok`, stock, seller, and
 
 ## Telegram notifications
 
-The service can push the current results to a free Telegram bot after each full search run. Telegram accounts, bots, and the Bot API cost nothing.
+The service can push the current results to a free Telegram bot named **Actually Good Deals!** after each full search run. Telegram accounts, bots, and the Bot API cost nothing.
 
 1. Create a bot with [BotFather](https://t.me/BotFather) and copy the token it prints.
 2. Start a chat with the new bot and send it any message.
@@ -133,8 +133,8 @@ The service can push the current results to a free Telegram bot after each full 
 4. Set both values in the environment of the service.
 
 ```sh
-export PRISJEGER_TELEGRAM_TOKEN="123456:ABC-DEF"
-export PRISJEGER_TELEGRAM_CHAT="123456789"
+export PRICESKEPTIC_TELEGRAM_TOKEN="123456:ABC-DEF"
+export PRICESKEPTIC_TELEGRAM_CHAT="123456789"
 ```
 
 Pass `-telegram-token` and `-telegram-chat` instead when you start the binary with flags. Restart the service so it reads the values. The log shows `telegram: notifications enabled` when both are set. With either value empty, the notifier stays off and everything else works as before.
@@ -202,18 +202,18 @@ The deal gate applies to slots 2-5. The cheapest in-stock offer is always kept, 
 The results table is written to:
 
 ```
-/home/ajg/obsidian/August/prisjeger.md
+/home/ajg/obsidian/August/priceskeptic.md
 ```
 
 The note is created if it does not exist. The server updates only the managed block, so other note content is preserved.
 
 ```markdown
-<!-- prisjeger:start -->
+<!-- priceskeptic:start -->
 ...
-<!-- prisjeger:end -->
+<!-- priceskeptic:end -->
 ```
 
-The table has these columns: Item, Product, Price, Ship, Total, Ordinary, Sale, Low, Stock, Trustpilot, Rating, Status, Change, Deal, Region, Store, Link, Note. The store sits next to the link, and the cheapest total is first. The link opens the product page. A stock cell shows the state plus the page's own quantity or low-stock text, for example `in_stock (2 igjen)`, so a thin shelf is visible without opening the page. An item with no qualifying offer gets a `No offer found` row whose Note says why and, when known, the cheapest rejected price. The note is regenerated at startup and after each item search. Change the path with `-obsidian` or `PRISJEGER_OBSIDIAN`.
+The table has these columns: Item, Product, Price, Ship, Total, Ordinary, Sale, Low, Stock, Trustpilot, Rating, Status, Change, Deal, Region, Store, Link, Note. The store sits next to the link, and the cheapest total is first. The link opens the product page. A stock cell shows the state plus the page's own quantity or low-stock text, for example `in_stock (2 igjen)`, so a thin shelf is visible without opening the page. An item with no qualifying offer gets a `No offer found` row whose Note says why and, when known, the cheapest rejected price. The note is regenerated at startup and after each item search. Change the path with `-obsidian` or `PRICESKEPTIC_OBSIDIAN`.
 
 ## Shopping expert skill
 
@@ -228,7 +228,7 @@ The score is shown as a table column and used as the tie-breaker when two offers
 To refresh existing rows without a search:
 
 ```sh
-./.run/prisjeger -backfill-trust
+./.run/priceskeptic -backfill-trust
 ```
 
 That rewrites `results.csv` and the Obsidian table with the current scores.
@@ -247,7 +247,7 @@ The search reads the store's shipping estimator with the buyer's postal code (67
 
 ## Web URL log
 
-`websearch.log` gets one URL per line, appended live as opencode works: the pages it fetches, the result URLs from its web searches, and URLs inside its shell commands (it often uses `curl` instead of the fetch tool). Search queries have no URL, so the log shows the sites the search found rather than the query text. Change the path with `-web-log` or `PRISJEGER_WEB_LOG`; an empty path disables it.
+`websearch.log` gets one URL per line, appended live as opencode works: the pages it fetches, the result URLs from its web searches, and URLs inside its shell commands (it often uses `curl` instead of the fetch tool). Search queries have no URL, so the log shows the sites the search found rather than the query text. Change the path with `-web-log` or `PRICESKEPTIC_WEB_LOG`; an empty path disables it.
 
 ## Stock changes
 
@@ -296,23 +296,23 @@ Flags, with environment fallbacks.
 
 | Flag | Env | Default | Meaning |
 | --- | --- | --- | --- |
-| `-addr` | `PRISJEGER_ADDR` | `127.0.0.1:8080` | Listen address. |
-| `-list` | `PRISJEGER_LIST` | `handleliste.txt` | Shopping list file. |
-| `-csv` | `PRISJEGER_CSV` | `results.csv` | The one output CSV file. |
-| `-obsidian` | `PRISJEGER_OBSIDIAN` | `/home/ajg/obsidian/August/prisjeger.md` | Obsidian note with the managed table. |
-| `-schedule` | `PRISJEGER_SCHEDULE` | `10:00,22:00` | Local times for the daily runs. Empty disables them. |
-| `-skill` | `PRISJEGER_SKILL` | `.opencode/skills/shopping-expert/SKILL.md` | Skill attached to pass one. |
-| `-opencode` | `PRISJEGER_OPENCODE` | `opencode` | OpenCode binary. |
-| `-model` | `PRISJEGER_MODEL` | host default | Passed as `--model` when set. |
-| `-timeout` | `PRISJEGER_TIMEOUT` | `20m` | Timeout per pass. The first search and the follow-up each get this much. |
-| `-parallel` | `PRISJEGER_PARALLEL` | `3` | Max concurrent OpenCode processes. |
-| `-trust-cache` | `PRISJEGER_TRUST_CACHE` | `.run/trustpilot.json` | Trustpilot rating cache. |
-| `-min-trust` | `PRISJEGER_MIN_TRUST` | `0` | Drop stores rated below this Trustpilot score. `0` keeps every store. |
-| `-require-deal` | `PRISJEGER_REQUIRE_DEAL` | `true` | Keep only genuine deals in slots 2-5. The cheapest in-stock offer is always shown. |
-| `-web-log` | `PRISJEGER_WEB_LOG` | `websearch.log` | Append every fetched and searched URL here. Empty disables it. |
-| `-postal-code` | `PRISJEGER_POSTAL_CODE` | `6773` | Buyer postal code used for every shipping estimate. |
-| `-telegram-token` | `PRISJEGER_TELEGRAM_TOKEN` | empty | Telegram bot token. Empty disables notifications. |
-| `-telegram-chat` | `PRISJEGER_TELEGRAM_CHAT` | empty | Telegram chat ID that receives the results. |
+| `-addr` | `PRICESKEPTIC_ADDR` | `127.0.0.1:8080` | Listen address. |
+| `-list` | `PRICESKEPTIC_LIST` | `handleliste.txt` | Shopping list file. |
+| `-csv` | `PRICESKEPTIC_CSV` | `results.csv` | The one output CSV file. |
+| `-obsidian` | `PRICESKEPTIC_OBSIDIAN` | `/home/ajg/obsidian/August/priceskeptic.md` | Obsidian note with the managed table. |
+| `-schedule` | `PRICESKEPTIC_SCHEDULE` | `10:00,22:00` | Local times for the daily runs. Empty disables them. |
+| `-skill` | `PRICESKEPTIC_SKILL` | `.opencode/skills/shopping-expert/SKILL.md` | Skill attached to pass one. |
+| `-opencode` | `PRICESKEPTIC_OPENCODE` | `opencode` | OpenCode binary. |
+| `-model` | `PRICESKEPTIC_MODEL` | host default | Passed as `--model` when set. |
+| `-timeout` | `PRICESKEPTIC_TIMEOUT` | `20m` | Timeout per pass. The first search and the follow-up each get this much. |
+| `-parallel` | `PRICESKEPTIC_PARALLEL` | `3` | Max concurrent OpenCode processes. |
+| `-trust-cache` | `PRICESKEPTIC_TRUST_CACHE` | `.run/trustpilot.json` | Trustpilot rating cache. |
+| `-min-trust` | `PRICESKEPTIC_MIN_TRUST` | `0` | Drop stores rated below this Trustpilot score. `0` keeps every store. |
+| `-require-deal` | `PRICESKEPTIC_REQUIRE_DEAL` | `true` | Keep only genuine deals in slots 2-5. The cheapest in-stock offer is always shown. |
+| `-web-log` | `PRICESKEPTIC_WEB_LOG` | `websearch.log` | Append every fetched and searched URL here. Empty disables it. |
+| `-postal-code` | `PRICESKEPTIC_POSTAL_CODE` | `6773` | Buyer postal code used for every shipping estimate. |
+| `-telegram-token` | `PRICESKEPTIC_TELEGRAM_TOKEN` | empty | Telegram bot token. Empty disables notifications. |
+| `-telegram-chat` | `PRICESKEPTIC_TELEGRAM_CHAT` | empty | Telegram chat ID that receives the results. |
 
 Prices are normalized to NOK. Run one server instance at a time.
 

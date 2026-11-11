@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"context"
@@ -71,7 +71,7 @@ type server struct {
 
 func (s *server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprintf(w, `prisjeger: price hunter
+	fmt.Fprintf(w, `priceskeptic: price hunter
 
 POST /search    start a search run for every item in %s
 POST /notify    send the current results to Telegram now
@@ -82,9 +82,9 @@ GET  /healthz   ok
 flags: -addr -list -csv -obsidian -skill -opencode -model -timeout -parallel -schedule
        -trust-cache -min-trust -require-deal -web-log -postal-code
        -telegram-token -telegram-chat -backfill-trust
-env:   PRISJEGER_ADDR PRISJEGER_LIST PRISJEGER_CSV PRISJEGER_OBSIDIAN PRISJEGER_SKILL
-       PRISJEGER_OPENCODE PRISJEGER_MODEL PRISJEGER_TIMEOUT PRISJEGER_PARALLEL
-       PRISJEGER_SCHEDULE PRISJEGER_TELEGRAM_TOKEN PRISJEGER_TELEGRAM_CHAT
+env:   PRICESKEPTIC_ADDR PRICESKEPTIC_LIST PRICESKEPTIC_CSV PRICESKEPTIC_OBSIDIAN PRICESKEPTIC_SKILL
+       PRICESKEPTIC_OPENCODE PRICESKEPTIC_MODEL PRICESKEPTIC_TIMEOUT PRICESKEPTIC_PARALLEL
+       PRICESKEPTIC_SCHEDULE PRICESKEPTIC_TELEGRAM_TOKEN PRICESKEPTIC_TELEGRAM_CHAT
 `, s.cfg.list)
 }
 

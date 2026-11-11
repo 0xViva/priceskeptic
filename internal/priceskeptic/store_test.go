@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"fmt"
@@ -94,7 +94,7 @@ func goldenRows() map[string][]storedRow {
 
 func TestNoteBlockGolden(t *testing.T) {
 	got := noteBlock(goldenRows(), time.Date(2026, 11, 10, 12, 34, 0, 0, time.UTC))
-	want := `<!-- prisjeger:start -->
+	want := `<!-- priceskeptic:start -->
 _Updated 2026-11-10 12:34. Source: results.csv._
 
 | Item | Product | Price | Ship | Total | Ordinary | Sale | Low | Stock | Trustpilot | Rating | Status | Change | Deal | Region | Store | Link | Note |
@@ -102,7 +102,7 @@ _Updated 2026-11-10 12:34. Source: results.csv._
 | widget | Widget | 100 | 0 | 100 |  |  |  | out_of_stock |  |  | change | down -10.00 (-9.1%) | below_trend | SE | Store | [open](<https://example.se/p>) |  |
 | filter | Kupéfilter | 299 | 0 | 299 | 399 | 25.1% | 279 | in_stock | 4.5 (866) |  | new |  | at_low | NO | Autohobby | [open](<https://autohobby.no/p>) |  |
 | filter | PURFLUX AHC736-2 | 147 | NaN | NaN |  |  |  | in_stock (2 igjen) | 4.4 (578) | 4.8 (218) | same | same | regular | NO | Mekster | [open](<https://mekster.no/p>) | Cheapest overall, regular price. |
-<!-- prisjeger:end -->`
+<!-- priceskeptic:end -->`
 	if got != want {
 		t.Fatalf("note block changed:\n--- got ---\n%s\n--- want ---\n%s", got, want)
 	}

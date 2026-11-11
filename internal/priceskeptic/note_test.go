@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 
 func TestWriteNoteReplacesUnclosedBlock(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "note.md")
-	original := "# Prisjeger\n\nkeep this preamble\n\n" + noteStartMarker + "\nold table without an end marker\n"
+	original := "# Priceskeptic\n\nkeep this preamble\n\n" + noteStartMarker + "\nold table without an end marker\n"
 	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestWriteNoteReplacesUnclosedBlock(t *testing.T) {
 	if got := strings.Count(content, noteEndMarker); got != 1 {
 		t.Fatalf("end markers = %d, want 1:\n%s", got, content)
 	}
-	if !strings.HasPrefix(content, "# Prisjeger\n\nkeep this preamble\n\n") {
+	if !strings.HasPrefix(content, "# Priceskeptic\n\nkeep this preamble\n\n") {
 		t.Fatalf("content before the block was not preserved:\n%s", content)
 	}
 	if strings.Contains(content, "old table without an end marker") {
@@ -38,7 +38,7 @@ func TestWriteNoteReplacesUnclosedBlock(t *testing.T) {
 	if !strings.Contains(content, "PURFLUX AHC736-2") {
 		t.Fatalf("the new block is missing its rows:\n%s", content)
 	}
-	if start, end, ok := findNoteBlock(content); !ok || start != len("# Prisjeger\n\nkeep this preamble\n\n") || end != len(content) {
+	if start, end, ok := findNoteBlock(content); !ok || start != len("# Priceskeptic\n\nkeep this preamble\n\n") || end != len(content) {
 		t.Fatalf("findNoteBlock = %d/%d/%v, want the block to run to EOF", start, end, ok)
 	}
 }

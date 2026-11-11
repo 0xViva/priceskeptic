@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"bytes"
@@ -405,7 +405,7 @@ func newStoredRow(item, recordedAt string, o offer, prev float64, hasPrev bool) 
 }
 
 func writeCSV(path string, rows map[string][]storedRow) error {
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".prisjeger-*")
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".priceskeptic-*")
 	if err != nil {
 		return err
 	}

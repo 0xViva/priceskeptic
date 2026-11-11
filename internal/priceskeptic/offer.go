@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"encoding/json"

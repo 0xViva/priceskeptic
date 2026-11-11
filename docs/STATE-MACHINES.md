@@ -1,8 +1,8 @@
-# State machines in prisjeger
+# State machines in priceskeptic
 
 Every long-lived thing here changes state: a run, an item, an offer, a row, a cache entry, a managed note block, a process. This file names each one, its legal states and transitions, and the decision that keeps it honest.
 
-The Go source files live under `internal/prisjeger/`.
+The Go source files live under `internal/priceskeptic/`.
 
 The rule is simple. If two fields must agree, they are one machine. If a transition can be skipped by a race, it is guarded in one place. If a state is written to disk, its legal values live in one table.
 

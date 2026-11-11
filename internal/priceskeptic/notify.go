@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"context"
@@ -155,7 +155,7 @@ func (st *resultStore) Message(now time.Time) string {
 	st.mu.Unlock()
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "prisjeger %s\n", now.Format("2006-01-02 15:04"))
+	fmt.Fprintf(&b, "priceskeptic %s\n", now.Format("2006-01-02 15:04"))
 	items := sortedItems(rows)
 	if len(items) == 0 {
 		b.WriteString("\nNo offers yet.\n")

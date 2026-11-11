@@ -1,4 +1,4 @@
-package prisjeger
+package priceskeptic
 
 import (
 	"context"
@@ -117,7 +117,7 @@ func TestStoreMessage(t *testing.T) {
 
 	msg := st.Message(now)
 	for _, want := range []string{
-		"prisjeger 2026-11-11 14:05",
+		"priceskeptic 2026-11-11 14:05",
 		"Støvsuger", "Power", "799.00 kr", "V15 Detect", "https://www.power.no/v15",
 		"Kaffetrakter", "Elkjøp", "1198.00 kr", "Moccamaster KBGT", "https://www.elkjop.no/moccamaster",
 	} {
