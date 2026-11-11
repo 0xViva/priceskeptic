@@ -10,6 +10,12 @@ LOG_FILE="$RUN_DIR/prisjeger.log"
 
 mkdir -p "$RUN_DIR"
 
+if [ -f "$RUN_DIR/telegram.env" ]; then
+  set -a
+  . "$RUN_DIR/telegram.env"
+  set +a
+fi
+
 if [ -f "$PID_FILE" ]; then
   pid="$(cat "$PID_FILE" 2>/dev/null || true)"
   if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && ps -p "$pid" -o args= | grep -Fq "$BIN"; then

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestReplaceWithoutOffersRecordsMiss(t *testing.T) {
@@ -62,6 +63,148 @@ func TestReplaceWithoutOffersRecordsMiss(t *testing.T) {
 	}
 }
 
+func goldenRows() map[string][]storedRow {
+	return map[string][]storedRow{
+		"filter": {
+			{
+				item: "filter", product: "PURFLUX AHC736-2", store: "Mekster", storeRegion: "no",
+				url: "https://mekster.no/p", price: "147.00", shipping: "NaN", total: "NaN",
+				stock: "in_stock", stockDetail: "2 igjen", trustRating: "4.4", trustCount: "578",
+				rating: "4.8", ratingCount: "218", status: "same", dealCheck: "regular",
+				note: "Cheapest overall, regular price.",
+			},
+			{
+				item: "filter", product: "Kupéfilter", store: "Autohobby", storeRegion: "no",
+				url: "https://autohobby.no/p", price: "299.00", shipping: "0.00", total: "299.00",
+				ordinary: "399.00", salePct: "25.1", historyLow: "279.00", priceTrend: "265.00",
+				stock: "in_stock", trustRating: "4.5", trustCount: "866", status: "new",
+				dealCheck: "at_low",
+			},
+		},
+		"widget": {
+			{
+				item: "widget", product: "Widget", store: "Store", storeRegion: "se",
+				url: "https://example.se/p", price: "100.00", shipping: "0.00", total: "100.00",
+				stock: "out_of_stock", status: "change", direction: "down",
+				changeNOK: "-10.00", changePct: "-9.1", dealCheck: "below_trend",
+			},
+		},
+	}
+}
+
+func TestNoteBlockGolden(t *testing.T) {
+	got := noteBlock(goldenRows(), time.Date(2026, 11, 10, 12, 34, 0, 0, time.UTC))
+	want := `<!-- prisjeger:start -->
+_Updated 2026-11-10 12:34. Source: results.csv._
+
+| Item | Product | Price | Ship | Total | Ordinary | Sale | Low | Stock | Trustpilot | Rating | Status | Change | Deal | Region | Store | Link | Note |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| widget | Widget | 100 | 0 | 100 |  |  |  | out_of_stock |  |  | change | down -10.00 (-9.1%) | below_trend | SE | Store | [open](<https://example.se/p>) |  |
+| filter | Kupéfilter | 299 | 0 | 299 | 399 | 25.1% | 279 | in_stock | 4.5 (866) |  | new |  | at_low | NO | Autohobby | [open](<https://autohobby.no/p>) |  |
+| filter | PURFLUX AHC736-2 | 147 | NaN | NaN |  |  |  | in_stock (2 igjen) | 4.4 (578) | 4.8 (218) | same | same | regular | NO | Mekster | [open](<https://mekster.no/p>) | Cheapest overall, regular price. |
+<!-- prisjeger:end -->`
+	if got != want {
+		t.Fatalf("note block changed:\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+}
+
+func TestCSVGolden(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "results.csv")
+	if err := writeCSV(path, goldenRows()); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `recorded_at,item,product,store,store_region,url,price_nok,shipping_nok,total_nok,ordinary_price_nok,sale_pct,history_low_nok,price_trend_nok,deal_check,stock,stock_detail,rating,rating_count,trustpilot_rating,trustpilot_reviews,status,price_change_nok,price_change_pct,change_direction,note
+,widget,Widget,Store,se,https://example.se/p,100.00,0.00,100.00,,,,,below_trend,out_of_stock,,,,,,change,-10.00,-9.1,down,
+,filter,Kupéfilter,Autohobby,no,https://autohobby.no/p,299.00,0.00,299.00,399.00,25.1,279.00,265.00,at_low,in_stock,,,,4.5,866,new,,,,
+,filter,PURFLUX AHC736-2,Mekster,no,https://mekster.no/p,147.00,NaN,NaN,,,,,regular,in_stock,2 igjen,4.8,218,4.4,578,same,,,,"Cheapest overall, regular price."
+`
+	if string(got) != want {
+		t.Fatalf("CSV changed:\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+}
+
+func TestDiffPrice(t *testing.T) {
+	cases := []struct {
+		name    string
+		prev    float64
+		hasPrev bool
+		current float64
+		want    priceChange
+	}{
+		{"new", 0, false, 100, priceChange{Status: priceNew}},
+		{"same", 100, true, 100.004, priceChange{Status: priceSame, NOK: "0.00", Pct: "0.0", Direction: directionSame}},
+		{"up", 100, true, 110, priceChange{Status: priceChanged, NOK: "10.00", Pct: "10.0", Direction: directionUp}},
+		{"down", 100, true, 90, priceChange{Status: priceChanged, NOK: "-10.00", Pct: "-10.0", Direction: directionDown}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := diffPrice(tc.prev, tc.hasPrev, tc.current); got != tc.want {
+				t.Fatalf("diffPrice(%v, %v, %v) = %+v, want %+v", tc.prev, tc.hasPrev, tc.current, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPruneItemsDropsItemsRemovedFromList(t *testing.T) {
+	dir := t.TempDir()
+	csvPath := filepath.Join(dir, "results.csv")
+	notePath := filepath.Join(dir, "note.md")
+
+	st, err := openResultStore(csvPath, notePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	for _, item := range []string{"keep", "drop"} {
+		_, err := st.Replace(item, []offer{{
+			Product: item + " product", Store: "Store", StoreRegion: "no",
+			URL: "https://example.no/" + item, Price: 100, Stock: "in_stock",
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := st.PruneItems([]string{"keep"}); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(csvPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := loadRows(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := rows["drop"]; ok {
+		t.Fatal("pruned item is still in the CSV")
+	}
+	if len(rows["keep"]) != 1 {
+		t.Fatalf("kept rows = %d, want 1", len(rows["keep"]))
+	}
+
+	note, err := os.ReadFile(notePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(note), "drop product") {
+		t.Fatalf("pruned item is still in the note:\n%s", note)
+	}
+
+	if err := st.PruneItems(nil); err != nil {
+		t.Fatal(err)
+	}
+	if !st.HasRows("keep") {
+		t.Fatal("empty list should not prune the remaining rows")
+	}
+}
+
 func TestLoadRowsAcceptsOldHeader(t *testing.T) {
 	old := "recorded_at,item,product,store,url,price_nok,shipping_nok,total_nok,ordinary_price_nok,sale_pct,history_low_nok,price_trend_nok,deal_check,stock,rating,rating_count,status,price_change_nok,price_change_pct,change_direction\n" +
 		"2026-01-01T00:00:00+01:00,widget,Widget,Store,https://example.no/p,100.00,0.00,100.00,200.00,50.0,,,at_low,in_stock,4.5,10,new,,,\n"
@@ -92,6 +235,58 @@ func TestCheapestCandidateSkipsOutOfStock(t *testing.T) {
 	}
 	if got.Store != "C" {
 		t.Fatalf("store = %q, want C (lowest landed cost)", got.Store)
+	}
+}
+
+func TestCheapestCandidateRequiresLandedCost(t *testing.T) {
+	price := func(v float64) flexFloat { return flexFloat{set: true, val: v} }
+	raw := []rawOffer{
+		{Store: "Foreign", URL: "https://example.com/p", Price: price(100), Stock: "in_stock"},
+		{Store: "Domestic", URL: "https://example.no/p", Price: price(200), Shipping: price(50), Stock: "in_stock"},
+	}
+	got, ok := cheapestCandidate(raw)
+	if !ok {
+		t.Fatal("cheapestCandidate found nothing")
+	}
+	if got.Store != "Domestic" {
+		t.Fatalf("store = %q, want Domestic (foreign offer has no landed cost)", got.Store)
+	}
+	if total := offerCost(got); total != 250 {
+		t.Fatalf("landed cost = %.2f, want 250", total)
+	}
+}
+
+func TestCheapestCandidateAcceptsForeignOfferWithLandedCost(t *testing.T) {
+	price := func(v float64) flexFloat { return flexFloat{set: true, val: v} }
+	raw := []rawOffer{
+		{Store: "Foreign", URL: "https://example.com/p", Price: price(100), Shipping: price(50), Stock: "in_stock"},
+		{Store: "Domestic", URL: "https://example.no/p", Price: price(200), Shipping: price(0), Stock: "in_stock"},
+	}
+	got, ok := cheapestCandidate(raw)
+	if !ok {
+		t.Fatal("cheapestCandidate found nothing")
+	}
+	if got.Store != "Foreign" {
+		t.Fatalf("store = %q, want Foreign (known landed cost 150)", got.Store)
+	}
+	if total := offerCost(got); total != 150 {
+		t.Fatalf("landed cost = %.2f, want 150", total)
+	}
+}
+
+func TestMissRowUsesBuyableCandidate(t *testing.T) {
+	price := func(v float64) flexFloat { return flexFloat{set: true, val: v} }
+	raw := []rawOffer{
+		{Store: "Foreign", URL: "https://example.com/p", Price: price(100), Stock: "in_stock"},
+		{Store: "Domestic", URL: "https://example.no/p", Price: price(200), Shipping: price(50), Stock: "in_stock"},
+	}
+	cheap, ok := cheapestCandidate(raw)
+	if !ok {
+		t.Fatal("cheapestCandidate found nothing")
+	}
+	row := noOfferRow("item", "2026-01-01T00:00:00+01:00", "Cheapest seen", &cheap)
+	if row.url != "https://example.no/p" {
+		t.Fatalf("miss row URL = %q, want the buyable domestic offer", row.url)
 	}
 }
 

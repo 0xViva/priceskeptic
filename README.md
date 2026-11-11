@@ -1,22 +1,59 @@
 # prisjeger
 
-A local service that hunts current sales and offers for a shopping list, keeps the latest five offers per item, and writes the same data as a table to Obsidian.
+**Your shopping list, hunted while you sleep.**
 
-## What it does
+[![Go 1.27.3](https://img.shields.io/badge/Go-1.27.3-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![test](https://img.shields.io/badge/test-go%20test-00ADD8)](STATE-MACHINES.md#verification)
+[![platform](https://img.shields.io/badge/platform-Linux-FCC624?logo=linux&logoColor=black)](#quick-start)
+[![license](https://img.shields.io/badge/license-not%20declared-lightgrey)](#license-and-contact)
 
-- Reads `handleliste.txt`, one item per line.
-- Runs the `shopping-expert` skill through OpenCode's websearch for each item.
-- Runs a follow-up in the same OpenCode session, asking whether there are any better sales.
-- Merges both passes, validates the offers, drops bad Prisjakt rows, and keeps at most 5 per item.
-- Looks up each store's Trustpilot score and review count, caches it for a week, and uses it as a ranking tie-breaker.
-- Tags each offer with its source region (NO/SE, EU, US, other) and prefers the closer market when landed costs tie.
-- Drops an offer that has neither a genuine before-price nor a verified low price, except the cheapest verified offer, which is always shown even at a regular price.
-- Appends the store's own stock quantity or low-stock wording to the stock entry, so a thin shelf is visible at a glance.
-- Records a `No offer found` row for an item with no qualifying offer, with the reason, the cheapest rejected price, and its link when one exists.
-- Appends every URL opencode fetches, and every result URL from a web search, to `websearch.log`.
-- Rewrites `results.csv` with the latest 5 rows per item.
-- Rewrites a table in an Obsidian note with a managed block.
-- Runs immediately on startup, then every day at 10:00 and 22:00 local time.
+## At a glance
+
+prisjeger is a local Go service that turns `handleliste.txt` into a ranked list of verified offers. It runs the `shopping-expert` agent twice per item, checks the landed cost to Norway, drops fake discounts, and writes `results.csv` plus an Obsidian table.
+
+> **Core value.** Every kept row is a verified landed cost, not a search snippet. The cheapest buyable offer is always shown, even when it is not on sale.
+
+## Core features
+
+| | Capability | What it does |
+| --- | --- | --- |
+| 🔎 | Two-pass agent search | Pass one finds offers; pass two asks for better sales in the same OpenCode session. A failed follow-up still keeps pass one. |
+| 🇳🇴 | Real landed cost | Shipping, VAT, import, and handling to postal code 6773. Unknown shipping is `NaN`, not a fake zero. |
+| 🛡️ | Deal gate and store trust | Drops regular prices without evidence, except the cheapest buyable offer. Trustpilot is a tie-breaker and an optional hard filter. |
+| 🔔 | Runs on a clock | Startup run, then 10:00 and 22:00 local. One run at a time. Telegram digest after each completed run. |
+
+## Tech stack
+
+![Go](https://img.shields.io/badge/Go-00ADD8?logo=go&logoColor=white)
+![OpenCode](https://img.shields.io/badge/OpenCode-agent-111111)
+![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?logo=telegram&logoColor=white)
+![Obsidian](https://img.shields.io/badge/Obsidian-note-7C3AED?logo=obsidian&logoColor=white)
+![CSV](https://img.shields.io/badge/CSV-results-217346)
+
+## Quick start
+
+```sh
+./start.sh                                      # build and run detached
+curl -X POST http://127.0.0.1:8080/search       # start a run
+curl -s http://127.0.0.1:8080/status            # idle / running, counts, next run
+```
+
+> Needs `opencode` on `PATH` and the skill file present. Amazon checks need Node and Playwright (`npm install --prefix tools`).
+
+## State machines
+
+The service has 14 named state machines: the run lifecycle, item search, offer gates, stock, deal evidence, price status, persistence, price history, the Trustpilot cache, notifications, the scheduler, the Obsidian block, the CSV schema, and the service process. The run lifecycle carries the hard invariant: at most one run, and `total = active + done + failed`.
+
+| Machine | States | Where |
+| --- | --- | --- |
+| Search run | `idle` → `running` → `idle` | [details](STATE-MACHINES.md#1-search-run) |
+| Notification | `disabled`, `ready`, `cooling`, `failed` | [details](STATE-MACHINES.md#10-notification) |
+| Obsidian block | `absent`, `closed`, `open` | [details](STATE-MACHINES.md#12-obsidian-block) |
+
+The full inventory, transitions, invariants, and the deliberately deferred machines are in [STATE-MACHINES.md](STATE-MACHINES.md).
+
+---
 
 ## Start and stop
 
@@ -44,7 +81,7 @@ curl http://127.0.0.1:8080/results
 
 ## Schedule
 
-The service runs the full list once immediately after startup, then at 10:00 and 22:00 local time. A scheduled run is skipped when a search is already active. Change the times with `-schedule` or `PRISJEGER_SCHEDULE`, for example `-schedule "09:30,21:30"`. An empty schedule disables timed runs but keeps the startup run.
+The service runs the full list once immediately after startup, then at 10:00 and 22:00 local time. At most one run is active at a time. A startup, scheduled, or manual start during a run is a no-op and returns the active run. Change the times with `-schedule` or `PRISJEGER_SCHEDULE`, for example `-schedule "09:30,21:30"`. An empty schedule disables timed runs but keeps the startup run.
 
 ## Search passes
 
@@ -55,6 +92,53 @@ The service runs the full list once immediately after startup, then at 10:00 and
 5. If pass two fails, the item still succeeds with pass one.
 
 If the first pass has no session ID, pass two starts a new session, attaches the skill, and includes the first offers in the prompt.
+
+## Amazon delivery check
+
+Amazon needs a real browser to set the delivery country to Norway and read the basket total. The checker is `tools/amazon-no.mjs`.
+
+Install it once:
+
+```sh
+npm install --prefix tools
+(cd tools && npx playwright install chromium)
+```
+
+Run it with the product URL and postal code:
+
+```sh
+node tools/amazon-no.mjs "https://www.amazon.de/dp/..." 6773
+```
+
+It prints JSON with `price_nok`, `shipping_nok`, `total_nok`, stock, seller, and rating. The skill tells the search agent to run it for every Amazon listing. If the script fails, the agent excludes the Amazon offer.
+
+## Telegram notifications
+
+The service can push the current results to a free Telegram bot after each full search run. Telegram accounts, bots, and the Bot API cost nothing.
+
+1. Create a bot with [BotFather](https://t.me/BotFather) and copy the token it prints.
+2. Start a chat with the new bot and send it any message.
+3. Open [@userinfobot](https://t.me/userinfobot) and copy your chat ID.
+4. Set both values in the environment of the service.
+
+```sh
+export PRISJEGER_TELEGRAM_TOKEN="123456:ABC-DEF"
+export PRISJEGER_TELEGRAM_CHAT="123456789"
+```
+
+Pass `-telegram-token` and `-telegram-chat` instead when you start the binary with flags. Restart the service so it reads the values. The log shows `telegram: notifications enabled` when both are set. With either value empty, the notifier stays off and everything else works as before.
+
+`start.sh` also loads `.run/telegram.env` when that file exists. Put the two exports there to keep the values across restarts without repeating them in every shell.
+
+Test the setup against the running service:
+
+```sh
+curl -X POST http://127.0.0.1:8080/notify
+```
+
+The service sends the results after every search run finishes, including the startup run and the runs at 10:00 and 22:00. Automatic sends within 6 hours of the last successful one are suppressed, so a manual rerun close to a scheduled run does not send twice. A failed automatic send does not start the window, so the next completed run retries. `POST /notify` always sends and ignores the window; a successful manual send becomes the last send, so an automatic send seconds later is suppressed.
+
+The message is plain text with one block per item and one line per offer, plus the product URL. It uses the Bot API's [sendMessage](https://core.telegram.org/bots/api#sendmessage) method with link previews disabled. [telegram.org](https://telegram.org/) describes the client apps.
 
 ## Output
 
@@ -162,11 +246,38 @@ Every scheduled run searches each item again. A `No offer found` row is replaced
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `POST` | `/search` | Start fresh searches for every list item. Returns `202` immediately. |
-| `GET` | `/status` | Active, done, and failed item counts, last error, CSV path. |
+| `POST` | `/search` | Start fresh searches for every list item. Returns `202` immediately with `started`, `run_id`, `state`, and `items`. Returns `started:false` when a run is already active. |
+| `POST` | `/notify` | Send the current results to Telegram now. Returns `400` when Telegram is not configured. |
+| `GET` | `/status` | Run state, current counts, next scheduled run, notification state, CSV path. |
 | `GET` | `/results` | The accumulated CSV file. |
 | `GET` | `/healthz` | `ok`. |
 | `GET` | `/` | Short usage text. |
+
+`GET /status` keeps the old top-level `active`, `done`, `failed`, and `last_error` fields and adds `state`, `run`, `next_run_at`, and `notify`.
+
+```json
+{
+  "state": "running",
+  "run": {
+    "id": 3,
+    "source": "search",
+    "state": "running",
+    "started_at": "2026-11-11T10:00:00+01:00",
+    "total": 12,
+    "active": 3,
+    "done": 9,
+    "failed": 0,
+    "last_error": ""
+  },
+  "next_run_at": "2026-11-11T22:00:00+01:00",
+  "notify": {"enabled": true, "last_sent_at": "2026-11-11T10:04:00+01:00"},
+  "active": 3,
+  "done": 9,
+  "failed": 0,
+  "last_error": "",
+  "csv_file": "results.csv"
+}
+```
 
 ## Configuration
 
@@ -189,7 +300,15 @@ Flags, with environment fallbacks.
 | `-require-deal` | `PRISJEGER_REQUIRE_DEAL` | `true` | Keep only genuine deals in slots 2-5. The cheapest in-stock offer is always shown. |
 | `-web-log` | `PRISJEGER_WEB_LOG` | `websearch.log` | Append every fetched and searched URL here. Empty disables it. |
 | `-postal-code` | `PRISJEGER_POSTAL_CODE` | `6773` | Buyer postal code used for every shipping estimate. |
+| `-telegram-token` | `PRISJEGER_TELEGRAM_TOKEN` | empty | Telegram bot token. Empty disables notifications. |
+| `-telegram-chat` | `PRISJEGER_TELEGRAM_CHAT` | empty | Telegram chat ID that receives the results. |
 
 Prices are normalized to NOK. Run one server instance at a time.
 
 The old `results/*.csv` files from the first version are legacy. They are not imported. `TODOS.md` tracks the remaining work.
+
+## License and contact
+
+No license is declared in this repository. Treat it as all rights reserved until one is added.
+
+Maintainer: [@0xViva](https://github.com/0xViva).

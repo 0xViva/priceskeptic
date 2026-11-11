@@ -17,7 +17,7 @@ You find the best legitimate place to buy one product for a buyer in Norway. The
 3. Open the strongest retailer product pages. Do not trust search snippets for price, stock, or shipping.
 4. Verify the exact model and variant. Exclude accessories, used items, refurbished items, and different generations unless the request names them. Treat dimensions, capacity, and a maximum price in the item text as hard constraints.
 5. Check delivery to Norway. For foreign stores, confirm shipping at checkout or on the shipping page. Include Norwegian VAT, customs, and handling fees in the landed cost. If you cannot confirm delivery, exclude the store.
-6. For Amazon, set the delivery country to Norway and read the `Shipping & Import Charges to Norway` total. If the product page only shows a price or free delivery, open the shipping calculator or checkout to get the import charges. An item that cannot ship to Norway is excluded, and a low item price without the landed cost is not an offer.
+6. For Amazon, run the bundled checker from the repo root: `node tools/amazon-no.mjs "<product-url>" 6773`. Use its `price_nok`, `shipping_nok`, `total_nok`, `stock`, `stock_detail`, `rating`, `rating_count`, and `seller`. The checker sets the delivery country to Norway and reads the basket total. If it returns an error, exclude the Amazon offer. Never guess Amazon shipping from a page that shows a US or Dutch delivery address, and never treat domestic free delivery as free delivery to Norway.
 7. Stop expanding to a lower tier when a higher-tier offer is already at a good price. A US detour is only worth it when the saving survives shipping, import, VAT, and returns.
 8. Rank by total landed cost, then source tier (NO/SE, EU, US, other), then Trustpilot store trust, then stock, then product rating. A regular price that is lower always outranks a sale. Return at most 5 offers.
 
@@ -33,7 +33,7 @@ EU/EEA: Amazon.de, Amazon.se, Amazon.co.uk, Amazon.pl, Amazon.nl, Thomann, Alza,
 
 US/global, only when the landed cost wins: Amazon.com, B&H, Newegg, the brand's own US store.
 
-Amazon is searched in every storefront that can deliver to Norway, not just the European ones. A US listing is in scope when it shows delivery to Norway and a landed cost.
+Search Amazon.de and Amazon.com for every item, even when a Norwegian offer looks good. Include each valid Amazon candidate in the JSONL so the checker can resolve its landed cost. A listing is in scope only when the checker confirms delivery to Norway. Never drop an Amazon candidate only because its shipping is not visible on the product page.
 
 The list is a starting point, not a guarantee that every store ships to Norway or stocks the item. Verify both. Do not include a foreign store you cannot confirm ships to Norway.
 
@@ -42,6 +42,7 @@ The list is a starting point, not a guarantee that every store ships to Norway o
 ### Price and shipping
 
 - `price_nok` is the product price in NOK, including VAT where the store shows it.
+- For Amazon, the checker output is the source of truth. Do not use a product page price read with a non-Norwegian delivery address, and do not treat a domestic free-delivery message as free delivery to Norway.
 - `shipping_nok` is the extra cost to deliver to Norway, including shipping, VAT, import, and handling when known. Use 0 for free shipping. Use null when the extra cost is unknown; the server writes NaN for a domestic offer with no rate. Exclude a foreign offer when the landed cost cannot be calculated.
 - If the product page does not show a shipping price, use the store's cart estimator with the buyer's postal code (6773 for this buyer) and read the cheapest **home-delivery** rate. A pickup-point price is not the shipping cost when the buyer wants delivery to the house. Shopify stores expose `/cart/shipping_rates.json` after the variant is in the cart; Magento stores often show it only at checkout.
 - Convert foreign currency to NOK at a current rate you can justify. Do not guess.

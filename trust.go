@@ -389,7 +389,7 @@ func filterByTrust(offers []offer, min float64) ([]offer, int) {
 	if min <= 0 {
 		return offers, 0
 	}
-	kept := offers[:0]
+	kept := make([]offer, 0, len(offers))
 	dropped := 0
 	for _, o := range offers {
 		if o.TrustRating != nil && *o.TrustRating < min {
