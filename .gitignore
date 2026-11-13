@@ -5,3 +5,7 @@
 /.run/
 /websearch.log
 /tools/node_modules/
+
+# Scratch/exploration scripts
+/tools/tmp*
+/tools/*.tmp.*

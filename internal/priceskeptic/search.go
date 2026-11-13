@@ -45,7 +45,10 @@ func (s *server) runItem(parent context.Context, item string) error {
 	firstText, sessionID, err := s.execChild(firstCtx, "--file", s.cfg.skill, searchPrompt(item, time.Now().Format("2006-01-02"), s.cfg.postalCode))
 	cancel()
 	if err != nil {
-		return err
+		if strings.TrimSpace(firstText) == "" {
+			return err
+		}
+		log.Printf("item %q: first pass ended with %v; using the answer it produced", item, err)
 	}
 	firstRaw := parseOffers(firstText)
 
@@ -88,6 +91,17 @@ func (s *server) runItem(parent context.Context, item string) error {
 	return nil
 }
 
+// hasOffer reports whether text contains at least one offer that survives the
+// same basic validation the search pipeline applies.
+func hasOffer(text string) bool {
+	for _, r := range parseOffers(text) {
+		if _, ok := toOffer(r); ok {
+			return true
+		}
+	}
+	return false
+}
+
 // cheapestCandidate is the cheapest buyable offer the search saw, including
 // offers the deal gate rejected. It makes a miss message concrete instead of
 // generic.
@@ -105,10 +119,11 @@ type agentEvent struct {
 	Type      string `json:"type"`
 	SessionID string `json:"sessionID"`
 	Part      struct {
-		Text  string `json:"text"`
-		Type  string `json:"type"`
-		Tool  string `json:"tool"`
-		State struct {
+		Text   string `json:"text"`
+		Type   string `json:"type"`
+		Tool   string `json:"tool"`
+		Reason string `json:"reason"`
+		State  struct {
 			Status string `json:"status"`
 			Input  struct {
 				URL     string `json:"url"`
@@ -158,26 +173,35 @@ func (s *server) execChild(ctx context.Context, extra ...string) (string, string
 		}
 	}
 	err = cmd.Wait()
-	if err != nil {
-		if ctx.Err() != nil {
-			return "", "", ctx.Err()
-		}
-		if msg := strings.TrimSpace(stderr.String()); msg != "" {
-			return "", "", fmt.Errorf("%w: %s", err, msg)
-		}
-		return "", "", err
+	text, sessionID, complete := extractText(stdout.Bytes())
+	if err == nil {
+		return text, sessionID, nil
 	}
-	text, sessionID := extractText(stdout.Bytes())
-	return text, sessionID, nil
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	} else if msg := strings.TrimSpace(stderr.String()); msg != "" {
+		err = fmt.Errorf("%w: %s", err, msg)
+	}
+	// opencode can exit non-zero after the session already produced its final
+	// answer, for example when a tool asked a question that a headless run
+	// cannot answer. Keep the answer instead of discarding the whole search.
+	if !complete && !hasOffer(text) {
+		return "", sessionID, err
+	}
+	return text, sessionID, err
 }
 
 // extractText reads opencode's JSON event stream. A child that writes offer
 // JSONL directly has no text events, so its raw stdout is the payload.
-func extractText(raw []byte) (string, string) {
+// complete reports whether a text answer was followed by a successful step
+// finish, which means the run produced a usable answer regardless of its exit
+// code.
+func extractText(raw []byte) (string, string, bool) {
 	var parts []string
 	var sessionID string
+	lastText, lastStop := -1, -1
 	dec := json.NewDecoder(bytes.NewReader(raw))
-	for {
+	for i := 0; ; i++ {
 		var ev agentEvent
 		if err := dec.Decode(&ev); err != nil {
 			break
@@ -187,12 +211,16 @@ func extractText(raw []byte) (string, string) {
 		}
 		if ev.Type == "text" && ev.Part.Text != "" {
 			parts = append(parts, ev.Part.Text)
+			lastText = i
+		}
+		if ev.Type == "step_finish" && ev.Part.Reason == "stop" {
+			lastStop = i
 		}
 	}
 	if len(parts) > 0 {
-		return strings.Join(parts, "\n"), sessionID
+		return strings.Join(parts, "\n"), sessionID, lastStop > lastText
 	}
-	return string(raw), sessionID
+	return string(raw), sessionID, false
 }
 
 func readList(path string) ([]string, error) {
